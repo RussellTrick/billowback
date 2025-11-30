@@ -1,0 +1,14 @@
+{
+  "darts": {
+    "player1": 0,
+    "player2": 2
+  },
+  "american-pool": {
+    "player1": 0,
+    "player2": 0
+  },
+  "british-pool": {
+    "player1": 0,
+    "player2": 0
+  }
+}

@@ -18,7 +18,12 @@ if (!uri) {
   process.exit(1);
 }
 
-const client = new MongoClient(uri);
+const client = new MongoClient(uri, {
+  tls: true,
+  tlsAllowInvalidCertificates: true,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+});
 
 let db = null;
 

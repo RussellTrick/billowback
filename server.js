@@ -9,18 +9,33 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// Middleware - Updated CORS configuration
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://billow-scoreboard.netlify.app", // Your Netlify URL
-      "https://*.netlify.app", // Or allow all Netlify domains
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      const allowedOrigins = [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "https://billow-scoreboard.netlify.app",
+        "https://twobillows.netlify.app",
+      ];
+
+      // Check if origin ends with .netlify.app
+      if (allowedOrigins.includes(origin) || origin.endsWith(".netlify.app")) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
+
 app.use(express.json());
 
 // Routes
@@ -38,7 +53,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Something went wrong!" });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
 });

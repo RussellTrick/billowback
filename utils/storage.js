@@ -101,3 +101,20 @@ export async function deleteResult(id) {
   await writeJSON(RESULTS_FILE, filtered);
   return { success: true, deleted: id };
 }
+
+// Add player names configuration
+const playerNames = {
+  player1: "Owain",
+  player2: "Billie",
+};
+
+export async function getPlayerNames() {
+  return playerNames;
+}
+
+export async function updatePlayerNames(player1Name, player2Name) {
+  playerNames.player1 = player1Name;
+  playerNames.player2 = player2Name;
+  // You could save this to a JSON file too if you want it persistent
+  return playerNames;
+}

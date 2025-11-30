@@ -3,6 +3,7 @@ import {
   getScoreboard,
   updateScoreboard,
   resetScoreboard,
+  getPlayerNames,
 } from "../utils/storage.js";
 
 const router = express.Router();
@@ -55,6 +56,17 @@ router.post("/reset", async (req, res) => {
   } catch (error) {
     console.error("Error resetting scoreboard:", error);
     res.status(500).json({ error: "Failed to reset scoreboard" });
+  }
+});
+
+// GET /api/scoreboard/players - Get player names
+router.get("/players", async (req, res) => {
+  try {
+    const players = await getPlayerNames();
+    res.json(players);
+  } catch (error) {
+    console.error("Error getting player names:", error);
+    res.status(500).json({ error: "Failed to get player names" });
   }
 });
 

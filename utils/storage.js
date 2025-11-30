@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
+import { getDB } from "./mongodb.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,84 +26,7 @@ const defaultScoreboard = {
   "british-pool": { player1: 0, player2: 0 },
 };
 
-const defaultResults = [];
-
-// Read JSON file
-async function readJSON(filePath, defaultValue) {
-  try {
-    const data = await fs.readFile(filePath, "utf8");
-    return JSON.parse(data);
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      await writeJSON(filePath, defaultValue);
-      return defaultValue;
-    }
-    throw error;
-  }
-}
-
-// Write JSON file
-async function writeJSON(filePath, data) {
-  await ensureDataDir();
-  await fs.writeFile(filePath, JSON.stringify(data, null, 2), "utf8");
-}
-
-// Scoreboard operations
-export async function getScoreboard() {
-  return await readJSON(SCOREBOARD_FILE, defaultScoreboard);
-}
-
-export async function updateScoreboard(gameType, player, score) {
-  const scoreboard = await getScoreboard();
-
-  if (!scoreboard[gameType]) {
-    scoreboard[gameType] = { player1: 0, player2: 0 };
-  }
-
-  scoreboard[gameType][`player${player}`] = score;
-  await writeJSON(SCOREBOARD_FILE, scoreboard);
-
-  return scoreboard;
-}
-
-export async function resetScoreboard() {
-  await writeJSON(SCOREBOARD_FILE, defaultScoreboard);
-  await writeJSON(RESULTS_FILE, defaultResults);
-  return defaultScoreboard;
-}
-
-// Results operations
-export async function getResults() {
-  return await readJSON(RESULTS_FILE, defaultResults);
-}
-
-export async function addResult(result) {
-  const results = await getResults();
-  const newResult = {
-    ...result,
-    id: Date.now(),
-    timestamp: result.timestamp || new Date().toISOString(),
-  };
-
-  results.unshift(newResult);
-
-  // Keep only last 100 results
-  if (results.length > 100) {
-    results.splice(100);
-  }
-
-  await writeJSON(RESULTS_FILE, results);
-  return newResult;
-}
-
-export async function deleteResult(id) {
-  const results = await getResults();
-  const filtered = results.filter((r) => r.id !== parseInt(id));
-  await writeJSON(RESULTS_FILE, filtered);
-  return { success: true, deleted: id };
-}
-
-// Add player names configuration
+// Player names configuration
 const playerNames = {
   player1: "Owain",
   player2: "Billie",
@@ -112,9 +36,126 @@ export async function getPlayerNames() {
   return playerNames;
 }
 
-export async function updatePlayerNames(player1Name, player2Name) {
-  playerNames.player1 = player1Name;
-  playerNames.player2 = player2Name;
-  // You could save this to a JSON file too if you want it persistent
-  return playerNames;
+// Scoreboard operations
+export async function getScoreboard() {
+  try {
+    const db = await getDB();
+    const collection = db.collection("scores");
+
+    let scoreboard = await collection.findOne({ _id: "current" });
+
+    if (!scoreboard) {
+      // Initialize with default data
+      scoreboard = { _id: "current", ...defaultScoreboard };
+      await collection.insertOne(scoreboard);
+    }
+
+    // Remove MongoDB _id from response
+    const { _id, ...scores } = scoreboard;
+    return scores;
+  } catch (error) {
+    console.error("Error getting scoreboard:", error);
+    return defaultScoreboard;
+  }
+}
+
+export async function updateScoreboard(gameType, player, score) {
+  try {
+    const db = await getDB();
+    const collection = db.collection("scores");
+
+    const updateField = `${gameType}.player${player}`;
+
+    await collection.updateOne(
+      { _id: "current" },
+      {
+        $set: { [updateField]: score },
+      },
+      { upsert: true }
+    );
+
+    return await getScoreboard();
+  } catch (error) {
+    console.error("Error updating scoreboard:", error);
+    throw error;
+  }
+}
+
+export async function resetScoreboard() {
+  try {
+    const db = await getDB();
+    const scoresCollection = db.collection("scores");
+    const resultsCollection = db.collection("results");
+
+    // Reset scores
+    await scoresCollection.replaceOne(
+      { _id: "current" },
+      { _id: "current", ...defaultScoreboard },
+      { upsert: true }
+    );
+
+    // Clear results
+    await resultsCollection.deleteMany({});
+
+    return defaultScoreboard;
+  } catch (error) {
+    console.error("Error resetting scoreboard:", error);
+    throw error;
+  }
+}
+
+// Results operations
+export async function getResults() {
+  try {
+    const db = await getDB();
+    const collection = db.collection("results");
+
+    const results = await collection
+      .find({})
+      .sort({ timestamp: -1 })
+      .limit(100)
+      .toArray();
+
+    return results;
+  } catch (error) {
+    console.error("Error getting results:", error);
+    return [];
+  }
+}
+
+export async function addResult(result) {
+  try {
+    const db = await getDB();
+    const collection = db.collection("results");
+
+    const newResult = {
+      ...result,
+      timestamp: result.timestamp || new Date().toISOString(),
+    };
+
+    const insertResult = await collection.insertOne(newResult);
+
+    return {
+      ...newResult,
+      _id: insertResult.insertedId,
+    };
+  } catch (error) {
+    console.error("Error adding result:", error);
+    throw error;
+  }
+}
+
+export async function deleteResult(id) {
+  try {
+    const db = await getDB();
+    const collection = db.collection("results");
+    const { ObjectId } = await import("mongodb");
+
+    await collection.deleteOne({ _id: new ObjectId(id) });
+
+    return { success: true, deleted: id };
+  } catch (error) {
+    console.error("Error deleting result:", error);
+    throw error;
+  }
 }

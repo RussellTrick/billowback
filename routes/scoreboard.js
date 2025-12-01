@@ -28,7 +28,15 @@ router.post("/update", async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    if (!["darts", "american-pool", "british-pool"].includes(gameType)) {
+    if (
+      ![
+        "darts",
+        "american-pool",
+        "british-pool",
+        "wordle",
+        "contexto",
+      ].includes(gameType)
+    ) {
       return res.status(400).json({ error: "Invalid game type" });
     }
 

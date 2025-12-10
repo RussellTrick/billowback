@@ -24,6 +24,10 @@ const defaultScoreboard = {
   darts: { player1: 0, player2: 0 },
   "american-pool": { player1: 0, player2: 0 },
   "british-pool": { player1: 0, player2: 0 },
+  wordle: { player1: 0, player2: 0 },
+  contexto: { player1: 0, player2: 0 },
+  "boom-battle-bar": { player1: 0, player2: 0 },
+  bowling: { player1: 0, player2: 0 },
 };
 
 // Player names configuration

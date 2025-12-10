@@ -35,6 +35,8 @@ router.post("/update", async (req, res) => {
         "british-pool",
         "wordle",
         "contexto",
+        "boom-battle-bar",
+        "bowling",
       ].includes(gameType)
     ) {
       return res.status(400).json({ error: "Invalid game type" });
